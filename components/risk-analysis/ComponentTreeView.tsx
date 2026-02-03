@@ -34,7 +34,13 @@ interface ModelOption {
     matrix_id: number;
 }
 
-const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (asset: AssetData | null) => void; onModelChange?: (modelId: string | null) => void }) => {
+const ComponentTreeView = ({
+    onAssetSelect,
+    onModelChange,
+}: {
+    onAssetSelect?: (asset: AssetData | null) => void;
+    onModelChange?: (modelId: string | null, modelName: string | null) => void;
+}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCluster, setSelectedCluster] = useState<string>('ALL');
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -85,12 +91,13 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
                     setModels(data);
                     if (!selectedModel && data.length > 0) {
                         const firstModelId = String(data[0].rbim_id);
-                        console.log('Setting default model:', firstModelId);
+                        const firstModelName = data[0].name;
+                        console.log('Setting default model:', firstModelId, firstModelName);
                         setSelectedModel(firstModelId);
                         // Notify parent of default selection
                         if (onModelChange) {
-                            console.log('Calling onModelChange with:', firstModelId);
-                            onModelChange(firstModelId);
+                            console.log('Calling onModelChange with:', firstModelId, firstModelName);
+                            onModelChange(firstModelId, firstModelName);
                         } else {
                             console.log('onModelChange callback not available');
                         }
@@ -272,7 +279,9 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
 
     // Count matching leaf nodes
     const matchCount = useMemo(() => {
-        return Object.values(searchFilteredData).filter((node) => !node.isFolder && node.data.asset_name.toLowerCase().includes(searchTerm.toLowerCase())).length;
+        return Object.values(searchFilteredData).filter(
+            (node) => !node.isFolder && node.data.asset_name.toLowerCase().includes(searchTerm.toLowerCase())
+        ).length;
     }, [searchFilteredData, searchTerm]);
 
     // Auto-expand when searching
@@ -301,7 +310,9 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
             depth++;
 
             // Find parent
-            const parent = Object.entries(data).find(([, node]) => node.children?.includes(currentIndex));
+            const parent = Object.entries(data).find(([, node]) =>
+                node.children?.includes(currentIndex)
+            );
 
             if (parent) {
                 currentIndex = parent[0];
@@ -351,7 +362,8 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
                             const newValue = e.target.value;
                             setSelectedModel(newValue);
                             if (onModelChange) {
-                                onModelChange(newValue || null);
+                                const selectedModelObj = models.find(m => m.rbim_id.toString() === newValue);
+                                onModelChange(newValue || null, selectedModelObj?.name || null);
                             }
                         }}
                         className="form-select w-full"
@@ -402,7 +414,11 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
                         disabled={loading}
                     />
                     {searchTerm && (
-                        <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Clear search">
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            title="Clear search"
+                        >
                             ✕
                         </button>
                     )}
@@ -424,14 +440,15 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
             </div>
 
             {/* Tree View */}
-            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900 overflow-x-auto">
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
                 <style jsx global>{`
                     .rct-tree-item-title-container {
-                        height: 28px !important;
                         min-height: 28px !important;
-                        padding: 2px 0 !important;
-                        width: max-content !important;
-                        min-width: 100% !important;
+                        padding: 6px 0 !important;
+                        white-space: normal !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        line-height: 1.4 !important;
                     }
                     .rct-tree-item-li:nth-child(even) .rct-tree-item-title-container {
                         background-color: #f9fafb !important;
@@ -450,7 +467,9 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
                     </div>
                 ) : Object.keys(searchFilteredData).length === 0 ? (
                     <div className="flex items-center justify-center py-8">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{searchTerm ? 'No results found' : 'No data available'}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {searchTerm ? 'No results found' : 'No data available'}
+                        </div>
                     </div>
                 ) : (
                     <ControlledTreeEnvironment
@@ -461,7 +480,7 @@ const ComponentTreeView = ({ onAssetSelect, onModelChange }: { onAssetSelect?: (
                             const indentPx = depth * 8; // 8px per level (about 1 character width)
 
                             return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: `${indentPx}px`, whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: `${indentPx}px` }}>
                                     {item.data.icon && (
                                         <img
                                             src={`data:image/x-icon;base64,${item.data.icon}`}

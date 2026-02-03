@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import React, { useState } from 'react';
 import ComponentTreeView from '@/components/risk-analysis/ComponentTreeView';
-import TreeGridExample from '@/components/risk-analysis/TreeGridExample';
+import InspectionView from '@/components/risk-analysis/InspectionView';
 
 interface AssetData {
     parent_id: number | null;
@@ -19,13 +19,13 @@ interface AssetData {
     icon?: string | null;
 }
 
-const RiskCalculation = () => {
+const InspectionPlan = () => {
     const [selectedAsset, setSelectedAsset] = useState<AssetData | null>(null);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
     const [selectedModelName, setSelectedModelName] = useState<string | null>(null);
 
     const handleModelChange = (modelId: string | null, modelName: string | null) => {
-        console.log('RiskCalculation: Model changed to:', modelId, modelName);
+        console.log('InspectionPlan: Model changed to:', modelId, modelName);
         setSelectedModelId(modelId);
         setSelectedModelName(modelName);
     };
@@ -39,7 +39,7 @@ const RiskCalculation = () => {
                     </Link>
                 </li>
                 <li className="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
-                    <span>Risk Calculation</span>
+                    <span>Inspection Plan</span>
                 </li>
             </ul>
 
@@ -50,14 +50,18 @@ const RiskCalculation = () => {
                     <ComponentTreeView onAssetSelect={setSelectedAsset} onModelChange={handleModelChange} />
                 </div>
 
-                {/* Right Column - Model Components Tree Grid */}
+                {/* Right Column - Inspection View */}
                 <div className="panel lg:col-span-8">
-                    <h5 className="mb-5 text-lg font-semibold dark:text-white-light">Model Components</h5>
-                    <TreeGridExample selectedModelId={selectedModelId} selectedModelName={selectedModelName} selectedAssetId={selectedAsset?.asset_id || null} />
+                    <h5 className="mb-5 text-lg font-semibold dark:text-white-light">Inspection Planning</h5>
+                    <InspectionView 
+                        selectedModelId={selectedModelId} 
+                        selectedModelName={selectedModelName} 
+                        selectedAsset={selectedAsset} 
+                    />
                 </div>
             </div>
         </div>
     );
 };
 
-export default RiskCalculation;
+export default InspectionPlan;

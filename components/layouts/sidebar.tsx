@@ -255,6 +255,14 @@ const Sidebar = () => {
                                         </Link>
                                     </li>
                                     <li className="nav-item">
+                                        <Link href="/risk-analysis/inspection-plan" className="group">
+                                            <div className="flex items-center">
+                                                <IconMenuComponents className="shrink-0 group-hover:!text-primary" />
+                                                <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Inspection Plan</span>
+                                            </div>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
                                         <Link href="/risk-analysis/data-browser" className="group">
                                             <div className="flex items-center">
                                                 <IconMenuComponents className="shrink-0 group-hover:!text-primary" />

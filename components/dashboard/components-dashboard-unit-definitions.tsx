@@ -24,7 +24,7 @@ const UnitDefinitionsTable = () => {
             try {
                 setLoading(true);
                 // Using rbim_id=26 and asset_id=2 as specified
-                const response = await fetch('/api/risk-analysis/report-unit-definitions?rbim_id=26&asset_id=2');
+                const response = await fetch('/api/risk-analysis/report-5-4?rbim_id=26&asset_id=2');
                 const result = await response.json();
                 
                 if (result.success) {
@@ -84,15 +84,15 @@ const UnitDefinitionsTable = () => {
                         <table className="min-w-full divide-y divide-white-light dark:divide-dark">
                             <thead>
                                 <tr className="bg-white-light/30 dark:bg-dark/30">
-                                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
+                                    {/* <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
                                         Asset ID
-                                    </th>
+                                    </th> */}
                                     <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
                                         Asset Name
                                     </th>
-                                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
+                                    {/* <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
                                         Hierarchy ID
-                                    </th>
+                                    </th> */}
                                     <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white-dark">
                                         Description
                                     </th>
@@ -113,15 +113,15 @@ const UnitDefinitionsTable = () => {
                                         key={`${item.ASSET_ID}-${item.HIERARCHY_ID}`}
                                         className={index % 2 === 0 ? 'bg-white-light/10 dark:bg-dark/10' : ''}
                                     >
-                                        <td className="whitespace-nowrap px-4 py-3 text-sm">
+                                        {/* <td className="whitespace-nowrap px-4 py-3 text-sm">
                                             {item.ASSET_ID}
-                                        </td>
+                                        </td> */}
                                         <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
                                             {item.ASSET_NAME}
                                         </td>
-                                        <td className="whitespace-nowrap px-4 py-3 text-sm">
+                                        {/* <td className="whitespace-nowrap px-4 py-3 text-sm">
                                             {item.HIERARCHY_ID}
-                                        </td>
+                                        </td> */}
                                         <td className="px-4 py-3 text-sm">
                                             {item.DESCRIPTION || '-'}
                                         </td>

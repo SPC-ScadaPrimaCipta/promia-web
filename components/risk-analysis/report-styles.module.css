@@ -1,0 +1,113 @@
+/* Report Modal Styles */
+.reportModal {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50;
+}
+
+.reportModalContent {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[95vw] w-full mx-4 max-h-[90vh] overflow-hidden;
+}
+
+/* Modal Header */
+.reportModalHeader {
+    @apply flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700;
+}
+
+.reportModalTitle {
+    @apply text-xl font-semibold text-gray-900 dark:text-white;
+}
+
+.reportModalCloseButton {
+    @apply text-gray-400 hover:text-gray-600 dark:hover:text-gray-300;
+}
+
+/* Modal Body */
+.reportModalBody {
+    @apply overflow-auto max-h-[calc(90vh-140px)];
+}
+
+.reportLoadingContainer {
+    @apply flex items-center justify-center py-12;
+}
+
+.reportLoadingContent {
+    @apply text-center;
+}
+
+.reportLoadingSpinner {
+    @apply inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary;
+}
+
+.reportLoadingText {
+    @apply mt-4 text-gray-600 dark:text-gray-400;
+}
+
+.reportEmptyState {
+    @apply flex items-center justify-center py-12;
+}
+
+.reportEmptyText {
+    @apply text-gray-500 dark:text-gray-400;
+}
+
+/* Table Styles */
+.reportTableContainer {
+    @apply p-5 overflow-x-auto;
+}
+
+.reportTable {
+    @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+.reportTableHeader {
+    @apply bg-gray-50 dark:bg-gray-900;
+}
+
+.reportTableHeaderCell {
+    @apply px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
+}
+
+.reportTableBody {
+    @apply bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+.reportTableRow {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700;
+}
+
+.reportTableCell {
+    @apply px-4 py-3 text-sm text-center text-gray-900 dark:text-gray-100;
+}
+
+.reportTableCellWithBorder {
+    @apply px-4 py-3 text-sm text-center text-gray-900 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700;
+}
+
+.reportTableTotalRow {
+    @apply bg-gray-100 dark:bg-gray-700 font-bold;
+}
+
+/* Chart Styles */
+.reportChartContainer {
+    @apply p-5 space-y-8;
+}
+
+.reportChartSection {
+    @apply bg-gray-50 dark:bg-gray-900 p-6 rounded-lg;
+}
+
+.reportChartWrapper {
+    height: 400px;
+}
+
+/* Modal Footer */
+.reportModalFooter {
+    @apply flex items-center justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-700;
+}
+
+.reportSaveButton {
+    @apply btn btn-primary;
+}
+
+.reportCloseButton {
+    @apply btn btn-outline-danger;
+}

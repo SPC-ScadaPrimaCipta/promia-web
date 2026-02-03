@@ -128,7 +128,8 @@ export async function GET(request: NextRequest) {
                             a.fd_id,
                             b.fnd_id,
                             b.name        AS function_name,
-                            b.description AS function_desc
+                            b.description AS function_desc,
+                            b.function_name as fnd_name
                         FROM
                         (
                             SELECT DISTINCT

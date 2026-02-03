@@ -34,16 +34,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# System Files
-Thumbs.db
-Desktop.ini
-
-# Logs
-*.log
