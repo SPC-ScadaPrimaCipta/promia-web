@@ -1,173 +1,427 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Tree, ControlledTreeEnvironment, TreeItem } from 'react-complex-tree';
 import 'react-complex-tree/lib/style-modern.css';
 
-interface RowData {
-    label: string;
-    detailA: string;
-    detailB: string;
-    detailC: string;
-    detailD: string;
+// Custom styles for tree
+const treeStyles = `
+    .rct-tree-root {
+        max-width: 600px;
+    }
+    .rct-tree-item-li {
+        max-width: 100%;
+    }
+    .rct-tree-item-title-container {
+        max-width: fit-content !important;
+        min-width: 200px;
+        overflow: visible;
+        display: inline-flex !important;
+    }
+    .rct-tree-item-title-container-selected,
+    .rct-tree-item-title-container-focused {
+        max-width: fit-content !important;
+        min-width: 200px;
+        display: inline-flex !important;
+        background-color: transparent !important;
+    }
+    .rct-tree-item-title-container-selected {
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        border-radius: 4px;
+        padding: 2px 8px;
+    }
+    .rct-tree-item-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .rct-tree-item {
+        width: fit-content !important;
+    }
+`;
+
+interface CategoryItem {
+    id: string;
+    name: string;
+    table: string;
 }
 
-interface TreeRow extends TreeItem<RowData> {
+interface ColumnItem {
+    name: string;
+    type: string;
+    displayName: string;
+}
+
+interface TreeRow extends TreeItem<{ label: string; categoryId?: string; columnName?: string }> {
     index: string;
     children?: string[];
-    data: RowData;
+    data: { label: string; categoryId?: string; columnName?: string };
     isFolder?: boolean;
+}
+
+interface CategoryData {
+    columns: any[];
+    data: any[];
 }
 
 type TreeRows = Record<string, TreeRow>;
 
 const DataBrowser = () => {
-    // Manually define 10 rows (no iteration) with parent/child relationships and 5 columns of data
-    const initialRows: TreeRows = {
-        'parent-1': {
-            index: 'parent-1',
-            children: ['child-1', 'child-2'],
-            data: { label: 'Parent 1', detailA: 'P1-A', detailB: 'P1-B', detailC: 'P1-C', detailD: 'P1-D' },
-            isFolder: true,
-        },
-        'child-1': {
-            index: 'child-1',
-            children: [],
-            data: { label: 'Child 1', detailA: 'C1-A', detailB: 'C1-B', detailC: 'C1-C', detailD: 'C1-D' },
-            isFolder: false,
-        },
-        'child-2': {
-            index: 'child-2',
-            children: [],
-            data: { label: 'Child 2', detailA: 'C2-A', detailB: 'C2-B', detailC: 'C2-C', detailD: 'C2-D' },
-            isFolder: false,
-        },
-        'parent-2': {
-            index: 'parent-2',
-            children: ['child-3', 'child-4'],
-            data: { label: 'Parent 2', detailA: 'P2-A', detailB: 'P2-B', detailC: 'P2-C', detailD: 'P2-D' },
-            isFolder: true,
-        },
-        'child-3': {
-            index: 'child-3',
-            children: [],
-            data: { label: 'Child 3', detailA: 'C3-A', detailB: 'C3-B', detailC: 'C3-C', detailD: 'C3-D' },
-            isFolder: false,
-        },
-        'child-4': {
-            index: 'child-4',
-            children: [],
-            data: { label: 'Child 4', detailA: 'C4-A', detailB: 'C4-B', detailC: 'C4-C', detailD: 'C4-D' },
-            isFolder: false,
-        },
-        'parent-3': {
-            index: 'parent-3',
-            children: ['child-5', 'child-6', 'child-7'],
-            data: { label: 'Parent 3', detailA: 'P3-A', detailB: 'P3-B', detailC: 'P3-C', detailD: 'P3-D' },
-            isFolder: true,
-        },
-        'child-5': {
-            index: 'child-5',
-            children: [],
-            data: { label: 'Child 5', detailA: 'C5-A', detailB: 'C5-B', detailC: 'C5-C', detailD: 'C5-D' },
-            isFolder: false,
-        },
-        'child-6': {
-            index: 'child-6',
-            children: [],
-            data: { label: 'Child 6', detailA: 'C6-A', detailB: 'C6-B', detailC: 'C6-C', detailD: 'C6-D' },
-            isFolder: false,
-        },
-        'child-7': {
-            index: 'child-7',
-            children: [],
-            data: { label: 'Child 7', detailA: 'C7-A', detailB: 'C7-B', detailC: 'C7-C', detailD: 'C7-D' },
-            isFolder: false,
-        },
-    };
-
-    initialRows['root'] = {
-        index: 'root',
-        children: [
-            'parent-1',
-            'parent-2',
-            'parent-3',
-        ],
-        data: { label: 'Data Browser', detailA: '', detailB: '', detailC: '', detailD: '' },
-        isFolder: true,
-    };
-
-    const [rows, setRows] = useState<TreeRows>(initialRows);
-    const items = useMemo(() => rows, [rows]);
-    const [expandedItems, setExpandedItems] = useState<string[]>(['root', 'parent-1', 'parent-2', 'parent-3']);
+    const [rows, setRows] = useState<TreeRows>({});
+    const [loading, setLoading] = useState(true);
+    const [expandedItems, setExpandedItems] = useState<string[]>([]);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [checkedColumns, setCheckedColumns] = useState<Record<string, string[]>>({}); // {categoryId: [columnName1, columnName2]}
+    const [categoryColumns, setCategoryColumns] = useState<Record<string, ColumnItem[]>>({}); // Cache columns
+    const [categoryData, setCategoryData] = useState<CategoryData | null>(null);
+    const [loadingData, setLoadingData] = useState(false);
+    const [topValue, setTopValue] = useState<number>(10); // Default TOP 10
+    const [useTop, setUseTop] = useState<boolean>(true); // Checkbox for TOP
+    const [rowCount, setRowCount] = useState<number | null>(null);
+    const [generatedSQL, setGeneratedSQL] = useState<string>(''); // Store generated SQL
+    const [showSQL, setShowSQL] = useState<boolean>(false); // Toggle SQL panel
 
-    // Parent map to compute levels for indentation
-    const parentMap: Record<string, string | undefined> = {
-        'child-1': 'parent-1',
-        'child-2': 'parent-1',
-        'child-3': 'parent-2',
-        'child-4': 'parent-2',
-        'child-5': 'parent-3',
-        'child-6': 'parent-3',
-        'child-7': 'parent-3',
-    };
+    useEffect(() => {
+        fetchDataBrowserData();
+    }, []);
 
-    const getLevel = (key: string): number => {
-        let level = 0;
-        let current = parentMap[key];
-        while (current) {
-            level += 1;
-            current = parentMap[current];
+    const fetchDataBrowserData = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/risk-analysis/data-browser');
+            const result = await response.json();
+
+            if (result.success) {
+                const transformedData = transformToTreeStructure(result.cig, result.cri, result.risk || []);
+                setRows(transformedData);
+            }
+        } catch (error) {
+            console.error('Error fetching data browser:', error);
+        } finally {
+            setLoading(false);
         }
-        return level;
     };
+
+    const transformToTreeStructure = (cigCategories: CategoryItem[], criCategories: CategoryItem[], riskCategories: CategoryItem[]): TreeRows => {
+        const treeData: TreeRows = {
+            root: {
+                index: 'root',
+                children: ['cig', 'cri', 'risk'],
+                data: { label: 'Data Browser' },
+                isFolder: true,
+            },
+            cig: {
+                index: 'cig',
+                children: [],
+                data: { label: 'CIG' },
+                isFolder: true,
+            },
+            cri: {
+                index: 'cri',
+                children: [],
+                data: { label: 'CRI' },
+                isFolder: true,
+            },
+            risk: {
+                index: 'risk',
+                children: [],
+                data: { label: 'RISK' },
+                isFolder: true,
+            },
+        };
+
+        // Add all CIG categories as folders (expandable)
+        const cigCategoryIds: string[] = [];
+        cigCategories.forEach((category) => {
+            treeData[category.id] = {
+                index: category.id,
+                children: [], // Will be populated when expanded
+                data: { label: category.name, categoryId: category.id },
+                isFolder: true, // Categories are folders now
+            };
+            cigCategoryIds.push(category.id);
+        });
+        treeData.cig.children = cigCategoryIds;
+
+        // Add all CRI categories as folders (expandable)
+        const criCategoryIds: string[] = [];
+        criCategories.forEach((category) => {
+            treeData[category.id] = {
+                index: category.id,
+                children: [], // Will be populated when expanded
+                data: { label: category.name, categoryId: category.id },
+                isFolder: true, // Categories are folders now
+            };
+            criCategoryIds.push(category.id);
+        });
+        treeData.cri.children = criCategoryIds;
+
+        // Add all RISK categories as folders (expandable)
+        const riskCategoryIds: string[] = [];
+        riskCategories.forEach((category) => {
+            treeData[category.id] = {
+                index: category.id,
+                children: [], // Will be populated when expanded
+                data: { label: category.name, categoryId: category.id },
+                isFolder: true, // Categories are folders now
+            };
+            riskCategoryIds.push(category.id);
+        });
+        treeData.risk.children = riskCategoryIds;
+
+        return treeData;
+    };
+
+    const fetchCategoryColumns = async (categoryId: string) => {
+        // Check cache first
+        if (categoryColumns[categoryId]) {
+            console.log(`Using cached columns for ${categoryId}`);
+            return categoryColumns[categoryId];
+        }
+
+        console.log(`Fetching columns for category: ${categoryId}`);
+        try {
+            const response = await fetch(`/api/risk-analysis/data-browser/columns?category=${categoryId}`);
+            console.log(`Response status for ${categoryId}:`, response.status);
+            const result = await response.json();
+            console.log(`Result for ${categoryId}:`, result);
+
+            if (result.success && result.columns) {
+                // Filter out Asset_ID and other metadata columns
+                const filteredColumns = result.columns.filter((col: any) => 
+                    !['Asset_ID', 'ASSET_ID', 'asset_id'].includes(col.name)
+                );
+                
+                const columns = filteredColumns.map((col: any) => ({
+                    name: col.name,
+                    type: col.type,
+                    displayName: col.name.replace(/_/g, ' ')
+                        .split(' ')
+                        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                        .join(' ')
+                }));
+                
+                console.log(`Setting ${columns.length} columns for ${categoryId}`);
+                setCategoryColumns(prev => ({ ...prev, [categoryId]: columns }));
+                return columns;
+            } else {
+                console.error(`Failed to fetch columns for ${categoryId}:`, result.error);
+            }
+            return [];
+        } catch (error) {
+            console.error(`Error fetching columns for ${categoryId}:`, error);
+            return [];
+        }
+    };
+
+    const handleCategoryExpand = async (categoryId: string) => {
+        console.log(`handleCategoryExpand called for: ${categoryId}`);
+        // Fetch columns if not already loaded
+        const columns = await fetchCategoryColumns(categoryId);
+        
+        console.log(`Got ${columns.length} columns for ${categoryId}`);
+        if (columns.length > 0) {
+            // Update tree to include column children
+            setRows(prev => {
+                const newRows = { ...prev };
+                const columnIds = columns.map((col: ColumnItem) => `${categoryId}-${col.name}`);
+                
+                // Update category to have children
+                newRows[categoryId] = {
+                    ...newRows[categoryId],
+                    children: columnIds,
+                };
+                
+                // Add column items
+                columns.forEach((col: ColumnItem) => {
+                    const itemId = `${categoryId}-${col.name}`;
+                    newRows[itemId] = {
+                        index: itemId,
+                        children: [],
+                        data: { 
+                            label: col.displayName,
+                            categoryId: categoryId,
+                            columnName: col.name
+                        },
+                        isFolder: false,
+                    };
+                });
+                
+                return newRows;
+            });
+        }
+    };
+
+    const runSQL = async () => {
+        // Get all checked columns across all categories
+        const hasCheckedColumns = Object.values(checkedColumns).some(cols => cols.length > 0);
+        
+        if (!hasCheckedColumns) {
+            alert('Please check at least one column');
+            return;
+        }
+
+        try {
+            setLoadingData(true);
+            
+            // Build query parameters for multiple categories
+            const categoriesWithColumns: Record<string, string[]> = {};
+            Object.keys(checkedColumns).forEach(catId => {
+                if (checkedColumns[catId].length > 0) {
+                    categoriesWithColumns[catId] = checkedColumns[catId];
+                }
+            });
+            
+            // Send as JSON in request body
+            const response = await fetch('/api/risk-analysis/data-browser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    categories: categoriesWithColumns,
+                    top: useTop ? topValue : null
+                })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                setCategoryData(result);
+                setGeneratedSQL(result.query || '');
+                setRowCount(result.data?.length || 0);
+            } else {
+                alert('Failed to load category data: ' + result.error);
+                setGeneratedSQL('');
+                setRowCount(null);
+            }
+        } catch (error) {
+            console.error('Error fetching category data:', error);
+            alert('Error fetching category data');
+        } finally {
+            setLoadingData(false);
+        }
+    };
+
+    const toggleColumn = (categoryId: string, columnName: string) => {
+        setCheckedColumns(prev => {
+            const categoryChecked = prev[categoryId] || [];
+            
+            if (categoryChecked.includes(columnName)) {
+                // Uncheck column
+                return {
+                    ...prev,
+                    [categoryId]: categoryChecked.filter(col => col !== columnName)
+                };
+            } else {
+                // Check column
+                return {
+                    ...prev,
+                    [categoryId]: [...categoryChecked, columnName]
+                };
+            }
+        });
+    };
+
+    const toggleAllColumnsInCategory = (categoryId: string) => {
+        const columns = categoryColumns[categoryId];
+        if (!columns) return;
+
+        const currentChecked = checkedColumns[categoryId] || [];
+        const allColumnNames = columns.map(col => col.name);
+        
+        // If all are checked, uncheck all. Otherwise, check all
+        const allChecked = allColumnNames.every(name => currentChecked.includes(name));
+        
+        setCheckedColumns(prev => ({
+            ...prev,
+            [categoryId]: allChecked ? [] : allColumnNames
+        }));
+    };
+
+    const items = useMemo(() => rows, [rows]);
 
     const renderRow = (item: TreeRow) => {
-        const level = getLevel(item.index);
-        const indentPx = level * 16;
+        const isRoot = item.index === 'root';
+        const isCIG = item.index === 'cig';
+        const isCRI = item.index === 'cri';
+        const isRISK = item.index === 'risk';
+        const isCategory = item.data.categoryId && !item.data.columnName;
+        const isColumn = item.data.categoryId && item.data.columnName;
+        
+        // Calculate indent based on hierarchy
+        let indent = 0;
+        if (isRoot) indent = 0;
+        else if (isCIG || isCRI || isRISK) indent = 20;
+        else if (isCategory) indent = 40;
+        else if (isColumn) indent = 60;
+        
+        // Check state for columns
+        const isColumnChecked = isColumn && 
+            checkedColumns[item.data.categoryId!]?.includes(item.data.columnName!);
+        
+        // Check state for category (all children checked?)
+        const isCategoryChecked = isCategory && categoryColumns[item.data.categoryId!] && 
+            categoryColumns[item.data.categoryId!].length > 0 &&
+            categoryColumns[item.data.categoryId!].every(col => 
+                checkedColumns[item.data.categoryId!]?.includes(col.name)
+            );
+        
+        // Indeterminate state for category (some but not all checked)
+        const isCategoryIndeterminate = isCategory && categoryColumns[item.data.categoryId!] &&
+            (checkedColumns[item.data.categoryId!]?.length > 0) &&
+            !isCategoryChecked;
+        
         return (
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '12px', width: '100%' }}>
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontWeight: item.isFolder ? 600 : 400,
-                        paddingLeft: `${indentPx}px`,
-                    }}
-                >
-                    {item.data.label}
-                </div>
-                <div style={{ fontSize: '13px' }}>{item.data.detailA}</div>
-                <div style={{ fontSize: '13px' }}>{item.data.detailB}</div>
-                <div style={{ fontSize: '13px' }}>{item.data.detailC}</div>
-                <div style={{ fontSize: '13px' }}>{item.data.detailD}</div>
+            <div style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                paddingLeft: `${indent}px`,
+                fontWeight: item.isFolder ? 600 : 400,
+                fontSize: '13px',
+                gap: '8px',
+            }}>
+                {isCategory && (
+                    <input 
+                        type="checkbox"
+                        checked={isCategoryChecked || false}
+                        ref={(el) => {
+                            if (el) el.indeterminate = isCategoryIndeterminate || false;
+                        }}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            toggleAllColumnsInCategory(item.data.categoryId!);
+                        }}
+                        className="form-checkbox"
+                    />
+                )}
+                {isColumn && (
+                    <input 
+                        type="checkbox"
+                        checked={isColumnChecked || false}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            toggleColumn(item.data.categoryId!, item.data.columnName!);
+                        }}
+                        className="form-checkbox"
+                    />
+                )}
+                {item.data.label}
             </div>
         );
     };
 
-    const randomizeColumnFive = () => {
-        debugger;
-        const rand = () => `Rand ${Math.random().toFixed(4)}`;
-        setRows((prev) => ({
-            ...prev,
-            'parent-1': { ...prev['parent-1'], data: { ...prev['parent-1'].data, detailD: rand() } },
-            'child-1': { ...prev['child-1'], data: { ...prev['child-1'].data, detailD: rand() } },
-            'child-2': { ...prev['child-2'], data: { ...prev['child-2'].data, detailD: rand() } },
-            'parent-2': { ...prev['parent-2'], data: { ...prev['parent-2'].data, detailD: rand() } },
-            'child-3': { ...prev['child-3'], data: { ...prev['child-3'].data, detailD: rand() } },
-            'child-4': { ...prev['child-4'], data: { ...prev['child-4'].data, detailD: rand() } },
-            'parent-3': { ...prev['parent-3'], data: { ...prev['parent-3'].data, detailD: rand() } },
-            'child-5': { ...prev['child-5'], data: { ...prev['child-5'].data, detailD: rand() } },
-            'child-6': { ...prev['child-6'], data: { ...prev['child-6'].data, detailD: rand() } },
-            'child-7': { ...prev['child-7'], data: { ...prev['child-7'].data, detailD: rand() } },
-        }));
-    };
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <span className="inline-flex h-10 w-10 animate-spin rounded-full border-4 border-transparent border-l-primary"></span>
+            </div>
+        );
+    }
 
     return (
         <div>
+            <style>{treeStyles}</style>
             <ul className="mb-6 flex space-x-2 rtl:space-x-reverse">
                 <li>
                     <Link href="#" className="text-primary hover:underline">
@@ -180,48 +434,161 @@ const DataBrowser = () => {
             </ul>
 
             <div className="panel">
-                <h5 className="mb-5 text-lg font-semibold dark:text-white-light">Data Browser</h5>
-                <div className="mb-4">
-                    <button className="btn btn-primary btn-sm" onClick={randomizeColumnFive}>
-                        Randomize 5th Column
-                    </button>
-                </div>
-                {/* Header */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-                        padding: '10px 12px',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        fontWeight: 600,
-                    }}
-                    className="mb-0"
-                >
-                    <div>Label</div>
-                    <div>Detail A</div>
-                    <div>Detail B</div>
-                    <div>Detail C</div>
-                    <div>Detail D</div>
+                <div className="mb-5 flex items-center justify-between">
+                    <h5 className="text-lg font-semibold dark:text-white-light">Data Browser</h5>
+                    <div className="flex gap-3 items-center">
+                        <button 
+                            className="btn btn-success btn-sm" 
+                            onClick={runSQL}
+                            disabled={Object.values(checkedColumns).every(cols => cols.length === 0) || loadingData}
+                        >
+                            {loadingData ? 'Loading...' : 'Run SQL'}
+                        </button>
+                        <button 
+                            className="btn btn-info btn-sm" 
+                            onClick={() => setShowSQL(!showSQL)}
+                        >
+                            {showSQL ? 'Hide SQL' : 'Show SQL'}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Tree content */}
-                <div style={{ border: '1px solid #e2e8f0', borderTop: 'none' }}>
+                {/* Top Controls */}
+                <div className="mb-4 flex items-center gap-4 border-b pb-4">
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="checkbox" 
+                            checked={useTop}
+                            onChange={(e) => setUseTop(e.target.checked)}
+                            className="form-checkbox"
+                        />
+                        <label className="text-sm font-medium">Top</label>
+                        <input 
+                            type="number" 
+                            min="1" 
+                            max="10000"
+                            value={topValue}
+                            onChange={(e) => setTopValue(parseInt(e.target.value) || 10)}
+                            disabled={!useTop}
+                            className="form-input w-24 py-1"
+                        />
+                    </div>
+                    <button 
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => {
+                            setCheckedColumns({});
+                            setExpandedItems([]);
+                            setCategoryData(null);
+                            setRowCount(null);
+                            setGeneratedSQL('');
+                        }}
+                    >
+                        Reset
+                    </button>
+                    {rowCount !== null && (
+                        <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-sm font-medium">Count Row:</span>
+                            <span className="text-sm bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded">{rowCount}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Tree View */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded p-4" style={{ maxHeight: '500px', overflowY: 'auto', overflowX: 'hidden' }}>
                     <ControlledTreeEnvironment
                         items={items}
                         getItemTitle={(item) => item.data.label}
                         renderItemTitle={({ item }) => renderRow(item as TreeRow)}
                         viewState={{ 'data-browser': { expandedItems, selectedItems } }}
-                        onExpandItem={(item) => setExpandedItems((prev) => [...prev, item.index as string])}
+                        onExpandItem={(item) => {
+                            const itemIndex = item.index as string;
+                            console.log('onExpandItem called for:', itemIndex);
+                            setExpandedItems((prev) => [...prev, itemIndex]);
+                            
+                            // Fetch columns when category is expanded
+                            const treeItem = items[itemIndex] as TreeRow;
+                            console.log('Tree item:', treeItem);
+                            console.log('Has categoryId?', treeItem?.data?.categoryId);
+                            console.log('Has columnName?', treeItem?.data?.columnName);
+                            
+                            // A category is a folder that has categoryId but no columnName
+                            // and is not root/cig/cri
+                            const isCategory = treeItem?.data?.categoryId && 
+                                              !treeItem?.data?.columnName;
+                            
+                            console.log('Is category?', isCategory);
+                            
+                            if (isCategory) {
+                                console.log('Expanding category:', treeItem.data.categoryId);
+                                handleCategoryExpand(treeItem.data.categoryId);
+                            }
+                        }}
                         onCollapseItem={(item) => setExpandedItems((prev) => prev.filter((id) => id !== item.index))}
                         onSelectItems={(items) => setSelectedItems(items as string[])}
                         canDragAndDrop={false}
                         canDropOnFolder={false}
                         canReorderItems={false}
                     >
-                        <Tree treeId="data-browser" rootItem="root" treeLabel="Data Browser Grid" />
+                        <Tree treeId="data-browser" rootItem="root" treeLabel="Data Browser Tree" />
                     </ControlledTreeEnvironment>
                 </div>
+
+                {/* SQL Preview Panel */}
+                {showSQL && generatedSQL && (
+                    <div className="mt-4 border border-gray-300 dark:border-gray-600 rounded">
+                        <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-600">
+                            <span className="text-sm font-semibold">Generated SQL</span>
+                        </div>
+                        <div className="p-4 bg-white dark:bg-gray-900">
+                            <pre className="text-xs font-mono whitespace-pre-wrap break-words">{generatedSQL}</pre>
+                        </div>
+                    </div>
+                )}
+
+                {/* Data Grid */}
+                {loadingData && (
+                    <div className="mt-6 flex justify-center">
+                        <span className="inline-flex h-8 w-8 animate-spin rounded-full border-4 border-transparent border-l-primary"></span>
+                    </div>
+                )}
+
+                {categoryData && categoryData.data && categoryData.data.length > 0 && !loadingData && (
+                    <div className="mt-6">
+                        <h6 className="mb-3 text-md font-semibold">
+                            Category Data ({categoryData.data.length} records)
+                        </h6>
+                        <div className="table-responsive">
+                            <table className="table-hover">
+                                <thead>
+                                    <tr>
+                                        {Object.keys(categoryData.data[0]).map((key) => (
+                                            <th key={key} className="whitespace-nowrap">
+                                                {key}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {categoryData.data.map((row, idx) => (
+                                        <tr key={idx}>
+                                            {Object.values(row).map((value: any, cellIdx) => (
+                                                <td key={cellIdx} className="whitespace-nowrap">
+                                                    {value !== null && value !== undefined ? String(value) : '-'}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {categoryData && categoryData.data && categoryData.data.length === 0 && !loadingData && (
+                    <div className="mt-6 text-center text-gray-500">
+                        <p>No data available for this category</p>
+                    </div>
+                )}
             </div>
         </div>
     );
