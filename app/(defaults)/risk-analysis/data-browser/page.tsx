@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Tree, ControlledTreeEnvironment, TreeItem } from 'react-complex-tree';
 import 'react-complex-tree/lib/style-modern.css';
+import * as XLSX from 'xlsx';
 
 // Custom styles for tree
 const treeStyles = `
@@ -253,6 +254,44 @@ const DataBrowser = () => {
         }
     };
 
+    const exportToExcel = () => {
+        if (!categoryData || !categoryData.data || categoryData.data.length === 0) {
+            alert('No data to export. Please run a query first.');
+            return;
+        }
+
+        try {
+            // Prepare data for export
+            const exportData = categoryData.data;
+            
+            // Create worksheet from data
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            
+            // Auto-size columns
+            const columnWidths = Object.keys(exportData[0]).map(key => ({
+                wch: Math.max(
+                    key.length,
+                    ...exportData.map(row => String(row[key] || '').length)
+                )
+            }));
+            worksheet['!cols'] = columnWidths;
+            
+            // Create workbook
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Query Result');
+            
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `DataBrowser_Export_${timestamp}.xlsx`;
+            
+            // Download file
+            XLSX.writeFile(workbook, filename);
+        } catch (error) {
+            console.error('Error exporting to Excel:', error);
+            alert('Failed to export to Excel. Please try again.');
+        }
+    };
+
     const runSQL = async () => {
         // Get all checked columns across all categories
         const hasCheckedColumns = Object.values(checkedColumns).some(cols => cols.length > 0);
@@ -443,6 +482,16 @@ const DataBrowser = () => {
                             disabled={Object.values(checkedColumns).every(cols => cols.length === 0) || loadingData}
                         >
                             {loadingData ? 'Loading...' : 'Run SQL'}
+                        </button>
+                        <button 
+                            className="btn btn-primary btn-sm" 
+                            onClick={exportToExcel}
+                            disabled={!categoryData || !categoryData.data || categoryData.data.length === 0}
+                        >
+                            <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Save to Excel
                         </button>
                         <button 
                             className="btn btn-info btn-sm" 
