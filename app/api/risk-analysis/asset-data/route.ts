@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
         const pool = await getConnection();
 
         // Build query - table name must be injected directly as it cannot be parameterized
-        const query = `SELECT * FROM dbo.${tableName} WHERE asset_id = @assetId`;
+        // Use Asset_ID with capital letters (from database schema)
+        const query = `SELECT * FROM dbo.[${tableName}] WHERE [Asset_ID] = @assetId`;
+
+        console.log('🔵 Fetching data from table:', tableName);
+        console.log('🔵 Asset ID:', assetId);
 
         const queryRequest = pool.request();
         queryRequest.input('assetId', sql.Int, parseInt(assetId));
