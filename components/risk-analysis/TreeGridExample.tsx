@@ -117,6 +117,7 @@ const TreeGridExample = ({ selectedModelId, selectedModelName, selectedAssetId }
     const [expandedItems, setExpandedItems] = useState<string[]>(['root']);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [editValues, setEditValues] = useState<Record<string, any>>({});
+    const [isSaving, setIsSaving] = useState(false);
     const [reports, setReports] = useState<any[]>([]);
     const [selectedReport, setSelectedReport] = useState<string>('');
     const [loadingReports, setLoadingReports] = useState(false);
@@ -710,9 +711,82 @@ const TreeGridExample = ({ selectedModelId, selectedModelName, selectedAssetId }
     };
 
     // Save all changes
-    const handleSaveAll = () => {
-        console.log('Saving all changes:', editValues);
-        alert('Changes saved! Check console for values.');
+    const handleSaveAll = async () => {
+        if (Object.keys(editValues).length === 0) {
+            alert('No changes to save.');
+            return;
+        }
+
+        if (!selectedModelId || !selectedAssetId) {
+            alert('Please select both a model and an asset first.');
+            return;
+        }
+
+        setIsSaving(true);
+
+        try {
+            // Build changes array with proper metadata from treeData
+            const changes = Object.entries(editValues).map(([nodeKey, value]) => {
+                const node = treeData[nodeKey];
+                return {
+                    nodeKey,
+                    td_id: node?.data.td_id ?? null,
+                    linktd_id: node?.data.linktd_id ?? null,
+                    linkfd_id: node?.data.linkfd_id ?? null,
+                    value,
+                    isCheckbox: node?.data.isCheckbox ?? false,
+                };
+            });
+
+            console.log('🟢 Saving changes:', changes);
+
+            const response = await fetch('/api/risk-analysis/tree-data/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rbim_id: parseInt(selectedModelId, 10),
+                    asset_id: selectedAssetId,
+                    changes,
+                }),
+            });
+
+            const result = await response.json();
+            console.log('🟢 Save result:', result);
+
+            if (result.success) {
+                alert(`Saved successfully! ${result.totalUpdates} record(s) updated.`);
+                
+                // Clear edit values after successful save
+                setEditValues({});
+
+                // Refresh detail data to get updated calculated values
+                if (selectedModelId && selectedAssetId) {
+                    setDetailLoading(true);
+                    try {
+                        const detailUrl = `/api/risk-analysis/model-component-detail?rbim_id=${selectedModelId}&asset_id=${selectedAssetId}`;
+                        const detailResponse = await fetch(detailUrl);
+                        const detailResult = await detailResponse.json();
+
+                        if (detailResult.success) {
+                            setDetailQueries(detailResult.queries || []);
+                            console.log('🟢 Detail data refreshed after save');
+                        }
+                    } catch (refreshError) {
+                        console.error('Error refreshing detail data:', refreshError);
+                    } finally {
+                        setDetailLoading(false);
+                    }
+                }
+            } else {
+                alert(`Save failed: ${result.error || 'Unknown error'}`);
+                console.error('Save failed:', result);
+            }
+        } catch (error: any) {
+            console.error('Error saving changes:', error);
+            alert(`Error saving changes: ${error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // Handle Risk Summary button click
@@ -1570,8 +1644,17 @@ const TreeGridExample = ({ selectedModelId, selectedModelName, selectedAssetId }
                     Expand to Level 3
                 </button>
                 <div className="ml-auto flex gap-2 items-center">
-                    <button onClick={handleSaveAll} className="btn btn-sm btn-primary">
-                        Save All Changes
+                    {Object.keys(editValues).length > 0 && (
+                        <span className="text-sm text-orange-600 dark:text-orange-400">
+                            {Object.keys(editValues).length} unsaved change(s)
+                        </span>
+                    )}
+                    <button 
+                        onClick={handleSaveAll} 
+                        className="btn btn-sm btn-primary"
+                        disabled={isSaving || Object.keys(editValues).length === 0}
+                    >
+                        {isSaving ? 'Saving...' : 'Save All Changes'}
                     </button>
                     <button 
                         onClick={handleRiskSummary} 
